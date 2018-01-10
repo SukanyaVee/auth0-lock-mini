@@ -2,13 +2,41 @@ import React, { Component } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import axios from 'axios';
+import Auth0Lock from 'auth0-lock'
 
 class App extends Component {
   constructor() {
     super();
-    this.state = {};
+    this.state = {
+      user:null,
+      secureDataResponse:null
+    };
     this.logout = this.logout.bind(this);
     this.fetchSecureData = this.fetchSecureData.bind(this);
+    this.onAuthenticated = this.onAuthenticated.bind(this)
+    this.login = this.login.bind(this);
+    this.lock = null;
+  }
+
+  componentDidMount(){
+    this.lock = new Auth0Lock(process.env.REACT_APP_AUTH0_CLIENT_ID, process.env.REACT_APP_AUTH0_DOMAIN);
+    this.lock.on('authenticated', this.onAuthenticated);
+    axios.get('/user-data').then(res=>{
+      this.setState({user: res.data
+      })
+    })
+  }
+
+  onAuthenticated(authResult){
+    this.lock.getUserInfo(authResult.accessToken, (error, user)=>{
+      axios.post('/login', {userId: user.sub}).then(resp=>{
+        this.setState({user: resp.data.user||null}).catch(error=>console.log(error))
+      })
+    })
+  }
+
+  login(){
+    this.lock.show();
   }
 
   logout() {
